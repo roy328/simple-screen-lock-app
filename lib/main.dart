@@ -1,208 +1,173 @@
-import 'package:english_words/english_words.dart';
+import 'dart:async';
 import 'package:flutter/material.dart';
-import 'package:provider/provider.dart';
 
 void main() {
   runApp(MyApp());
 }
 
 class MyApp extends StatelessWidget {
-  const MyApp({super.key});
-
   @override
   Widget build(BuildContext context) {
-    return ChangeNotifierProvider(
-      create: (context) => MyAppState(),
-      child: MaterialApp(
-        title: 'Lock screen',
-        theme: ThemeData(
-          useMaterial3: true,
-          colorScheme: ColorScheme.fromSeed(seedColor: Colors.deepOrange),
-        ),
-        home: MyHomePage(),
+    return MaterialApp(
+      title: 'Lock Screen Demo',
+      theme: ThemeData(
+        primarySwatch: Colors.blue,
       ),
+      home: HomeScreen(),
     );
   }
 }
 
-class MyAppState extends ChangeNotifier {
-  var current = WordPair.random();
-
-  void getNext() {
-    current = WordPair.random();
-    notifyListeners();
-  }
-
-  var favorites = <WordPair>[];
-
-  void toggleFavorite() {
-    if (favorites.contains(current)) {
-      favorites.remove(current);
-    } else {
-      favorites.add(current);
-    }
-    notifyListeners();
-  }
-}
-
-class MyHomePage extends StatefulWidget {
+class HomeScreen extends StatefulWidget {
   @override
-  State<MyHomePage> createState() => _MyHomePageState();
+  _HomeScreenState createState() => _HomeScreenState();
 }
 
-class _MyHomePageState extends State<MyHomePage> {
-  var selectedIndex = 0;
+class _HomeScreenState extends State<HomeScreen> {
+  bool _isLocked = false;
+  Timer? _timer;
+  
+  // Set default lock duration
+  final int _lockDuration = 120;
+
+  String getDurationString(int seconds) {
+    int minutes = seconds ~/ 60;
+    return '$minutes min';
+  }
+
+  void _lockScreen() {
+    setState(() {
+      _isLocked = true;
+    });
+    // Unlock after the specified duration
+    _timer = Timer(Duration(seconds: _lockDuration), _unlockScreen);
+  }
+
+  void _unlockScreen() {
+    setState(() {
+      _isLocked = false;
+    });
+  }
+
+  @override
+  void dispose() {
+    _timer?.cancel();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
-    Widget page;
-    switch (selectedIndex) {
-      case 0:
-        page = GeneratorPage();
-        break;
-      case 1:
-        page = FavoritesPage();
-        break;
-      default:
-        throw UnimplementedError('no widget for $selectedIndex');
-    }
-
-    return LayoutBuilder(
-      builder: (context, constraints) {
-        return Scaffold(
-          body: Row(
-            children: [
-              SafeArea(
-                child: NavigationRail(
-                  extended: constraints.maxWidth >= 600,
-                  destinations: [
-                    NavigationRailDestination(
-                      icon: Icon(Icons.home),
-                      label: Text('Home'),
-                    ),
-                    NavigationRailDestination(
-                      icon: Icon(Icons.favorite),
-                      label: Text('Favorites'),
+    return Scaffold(
+      body: Container(
+        color: Colors.grey[300], // Smooth gray background
+        child: Center(
+          child: _isLocked
+              ? LockScreen(onUnlock: _unlockScreen, lockDuration: _lockDuration)
+              : Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: <Widget>[
+                    Text('Home Screen', style: TextStyle(fontSize: 24, color: Colors.black)),
+                    SizedBox(height: 20),
+                    ElevatedButton(
+                      onPressed: _lockScreen,
+                      child: Text('Lock Screen for ${getDurationString(_lockDuration)}'),
                     ),
                   ],
-                  selectedIndex: selectedIndex,
-                  onDestinationSelected: (value) {
-                    setState(() {
-                      selectedIndex = value;
-                    });
-                  },
                 ),
+        ),
+      ),
+    );
+  }
+}
+
+class LockScreen extends StatelessWidget {
+  final VoidCallback onUnlock;
+  final int lockDuration;
+
+  LockScreen({required this.onUnlock, required this.lockDuration});
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: Colors.black54,
+      body: Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            ElevatedButton(
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.red,
+                padding: EdgeInsets.symmetric(horizontal: 30, vertical: 20),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(23)),
               ),
-              Expanded(
-                child: Container(
-                  color: Theme.of(context).colorScheme.primaryContainer,
-                  child: page,
-                ),
+              onPressed: () {
+                // Add any action if needed when the Locked button is pressed
+              },
+              child: Text(
+                'Locked',
+                style: TextStyle(color: Colors.white, fontSize: 24),
               ),
-            ],
-          ),
-        );
+            ),
+            SizedBox(height: 20), // Space between button and time display
+            Text(
+              'Time Remaining:',
+              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.white),
+            ),
+            SizedBox(height: 5),
+            CountDownTimerDisplay(duration: lockDuration, onUnlock: onUnlock),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+// Countdown Dialog Widget
+class CountDownTimerDisplay extends StatefulWidget {
+  final int duration;
+  final VoidCallback onUnlock;
+
+  CountDownTimerDisplay({required this.duration, required this.onUnlock});
+
+  @override
+  _CountDownTimerDisplayState createState() => _CountDownTimerDisplayState();
+}
+
+class _CountDownTimerDisplayState extends State<CountDownTimerDisplay> {
+  late int _remainingTime;
+  late Timer _timer;
+
+  @override
+  void initState() {
+    super.initState();
+    _remainingTime = widget.duration;
+    _startCountdown();
+  }
+
+  void _startCountdown() {
+    _timer = Timer.periodic(Duration(seconds: 1), (timer) {
+      if (_remainingTime > 0) {
+        setState(() {
+          _remainingTime--;
+        });
+      } else {
+        _timer.cancel();
+        widget.onUnlock(); // Unlock after waiting
       }
-    );
+    });
   }
-}
 
-class GeneratorPage extends StatelessWidget {
   @override
-  Widget build(BuildContext context) {
-    var appState = context.watch<MyAppState>();
-    var pair = appState.current;
-
-    IconData icon;
-    if (appState.favorites.contains(pair)) {
-      icon = Icons.favorite;
-    } else {
-      icon = Icons.favorite_border;
-    }
-
-    return Center(
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          BigCard(pair: pair),
-          SizedBox(height: 10),
-          Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              ElevatedButton.icon(
-                onPressed: () {
-                  appState.toggleFavorite();
-                },
-                icon: Icon(icon),
-                label: Text('Like'),
-              ),
-              SizedBox(width: 10),
-              ElevatedButton(
-                onPressed: () {
-                  appState.getNext();
-                },
-                child: Text('Next'),
-              ),
-            ],
-          ),
-        ],
-      ),
-    );
+  void dispose() {
+    _timer.cancel();
+    super.dispose();
   }
-}
-
-class FavoritesPage extends StatelessWidget {
-  @override
-  Widget build(BuildContext context) {
-    var appState = context.watch<MyAppState>();
-
-    if (appState.favorites.isEmpty) {
-      return Center(
-        child: Text('No favorites yet.'),
-      );
-    }
-
-    return ListView(
-      children: [
-        Padding(
-          padding: const EdgeInsets.all(20),
-          child: Text('You have '
-              '${appState.favorites.length} favorites:'),
-        ),
-        for (var pair in appState.favorites)
-          ListTile(
-            leading: Icon(Icons.favorite),
-            title: Text(pair.asLowerCase),
-          ),
-      ],
-    );
-  }
-}
-
-class BigCard extends StatelessWidget {
-  const BigCard({
-    super.key,
-    required this.pair,
-  });
-
-  final WordPair pair;
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final style = theme.textTheme.displayMedium!.copyWith(
-      color: theme.colorScheme.onPrimary,
-    );
-    return Card(
-      color: theme.colorScheme.primary,
-      child: Padding(
-        padding: const EdgeInsets.all(20),
-        child: Text(
-          pair.asLowerCase,
-          style: style,
-          semanticsLabel: "${pair.first} ${pair.second}",
-        ),
-      ),
+    return Text(
+      '${(_remainingTime ~/ 60).toString().padLeft(2, '0')}:${(_remainingTime % 60).toString().padLeft(2, '0')}',
+      style: TextStyle(fontSize: 48, color: Colors.redAccent, fontWeight: FontWeight.bold),
     );
   }
 }
