@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 
 void main() {
   runApp(MyApp());
@@ -88,40 +89,40 @@ class LockScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: Colors.black54,
-      body: Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            ElevatedButton(
-              style: ElevatedButton.styleFrom(
-                backgroundColor: Colors.red,
-                padding: EdgeInsets.symmetric(horizontal: 30, vertical: 20),
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(23)),
+    return WillPopScope(
+      onWillPop: () async => false, // Prevent back navigation
+      child: Scaffold(
+        backgroundColor: Colors.black54,
+        body: Center(
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              ElevatedButton(
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Colors.red,
+                  padding: EdgeInsets.symmetric(horizontal: 30, vertical: 20),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(23)),
+                ),
+                onPressed: () {},
+                child: Text(
+                  'Locked',
+                  style: TextStyle(color: Colors.white, fontSize: 24),
+                ),
               ),
-              onPressed: () {
-                // Add any action if needed when the Locked button is pressed
-              },
-              child: Text(
-                'Locked',
-                style: TextStyle(color: Colors.white, fontSize: 24),
+              SizedBox(height: 20),
+              Text(
+                'Time Remaining:',
+                style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.white),
               ),
-            ),
-            SizedBox(height: 20), // Space between button and time display
-            Text(
-              'Time Remaining:',
-              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.white),
-            ),
-            SizedBox(height: 5),
-            CountDownTimerDisplay(duration: lockDuration, onUnlock: onUnlock),
-          ],
+              SizedBox(height: 5),
+              CountDownTimerDisplay(duration: lockDuration, onUnlock: onUnlock),
+            ],
+          ),
         ),
       ),
     );
   }
 }
-
 // Countdown Dialog Widget
 class CountDownTimerDisplay extends StatefulWidget {
   final int duration;

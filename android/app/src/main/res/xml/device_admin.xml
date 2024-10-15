@@ -1,0 +1,6 @@
+<device-admin xmlns:android="http://schemas.android.com/apk/res/android">
+    <permission android:name="android.permission.BIND_DEVICE_ADMIN" />
+    <uses-policies>
+        <policy android:name="android.app.device_admin" />
+    </uses-policies>
+</device-admin>
